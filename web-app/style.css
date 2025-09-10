@@ -109,3 +109,11 @@ th, td {
 .read-tag-container.visible {
     display: block; /* Show when .visible class is added */
 }
+
+#last-scanned-epc {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #007bff;
+    word-break: break-all;
+}
+

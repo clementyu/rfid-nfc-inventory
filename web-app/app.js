@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const itemSummaryTableBody = document.getElementById('item-summary-table-body');
     const epcTableBody = document.getElementById('epc-table-body');
     let inventoryData = [];
+    let isReadTagActive = false;
 
     ws.onopen = () => {
         connectionStatus.textContent = 'Connected';
@@ -50,12 +51,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderRfidTables();
                 break;
             case 'rfid-update':
+                isReadTagActive = false;
                 readTagContainer.classList.remove('visible');
                 handleRfidUpdate(message.payload);
                 break;
             case 'rfid-single-tag':
-                lastScannedEpc.textContent = message.epc;
-                readTagContainer.classList.add('visible');
+                if (isReadTagActive) {
+                    lastScannedEpc.textContent = message.epc;
+                    readTagContainer.classList.add('visible');
+                }
                 break;
         }
     };
@@ -96,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // RFID Event Listeners
     rfidStartBtn.addEventListener('click', () => {
+        isReadTagActive = false;
         scanningStatus.textContent = 'Scanning';
         scanningStatus.classList.remove('idle');
         scanningStatus.classList.add('scanning');
@@ -103,6 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ws.send(JSON.stringify({ command: 'rfid-start' }));
     });
     rfidReadTagBtn.addEventListener('click', () => {
+        isReadTagActive = true;
         scanningStatus.textContent = 'Scanning';
         scanningStatus.classList.remove('idle');
         scanningStatus.classList.add('scanning');
@@ -112,6 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     rfidStopBtn.addEventListener('click', () => {
+        isReadTagActive = false;
         scanningStatus.textContent = 'Idle';
         scanningStatus.classList.remove('scanning');
         scanningStatus.classList.add('idle');
@@ -206,3 +213,4 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+

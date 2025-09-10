@@ -73,6 +73,7 @@ const Constants = {
 let rfidPacketBuffer = Buffer.alloc(0);
 let isScanningRFID = false;
 let currentRfidMode = 'inventory'; // 'inventory' or 'read-tag'
+let rfidAutoModeState = 0; // 0: initial, 1: start_app sent, 2: ready
 const scannedTagsCumulative = new Map();
 const inventoryData = new Map();
 
@@ -96,6 +97,7 @@ rfidPort.on('open', () => {
     if (argv.inventory) {
         loadInventory(argv.inventory);
     }
+    startRfidInitialization();
 });
 rfidPort.on('data', handleRfidData);
 rfidPort.on('error', (err) => console.error(`RFID Port Error: ${err.message}`));
@@ -127,15 +129,15 @@ wss.on('connection', ws => {
 
     ws.on('message', message => {
         const data = JSON.parse(message);
-        handleWsMessage(data);
+        handleWsMessage(data, ws);
     });
 
     ws.on('close', () => console.log('Client disconnected'));
 });
 
-function handleWsMessage(data) {
+function handleWsMessage(data, ws) {
+    // NFC Commands
     switch (data.command) {
-        // NFC Commands
         case 'register':
             registerOrUpdateBook(data.payload);
             break;
@@ -145,28 +147,51 @@ function handleWsMessage(data) {
         case 'check-in':
             updateBookStatus(data.uid, 'Available');
             break;
-        // RFID Commands
-        case 'rfid-start':
-            currentRfidMode = 'inventory';
-            sendRfidCommand(Buffer.from(Constants.HEX_SCAN_START, 'hex'));
-            break;
-        case 'rfid-read-tag':
-            currentRfidMode = 'read-tag';
-            sendRfidCommand(Buffer.from(Constants.HEX_SCAN_START, 'hex'));
-            break;
-        case 'rfid-stop':
-            sendRfidCommand(Buffer.from(Constants.HEX_SCAN_STOP, 'hex'));
-            break;
-        case 'upload_inventory':
-            parseInventoryData(data.payload);
-            const newInitialInventory = Array.from(inventoryData.values()).map(item => ({ ...item, count: 0, timestamp: null }));
-            broadcast({ type: 'rfid-initial-inventory', payload: newInitialInventory });
-            break;
+    }
+
+    // RFID Commands
+    if (data.command.startsWith('rfid-')) {
+        if (rfidAutoModeState !== 2) {
+            console.log('RFID reader is not ready. Please wait.');
+            ws.send(JSON.stringify({ type: 'rfid-error', message: 'Reader not ready' }));
+            return;
+        }
+        switch (data.command) {
+            case 'rfid-start':
+                currentRfidMode = 'inventory';
+                sendRfidCommand(Buffer.from(Constants.HEX_SCAN_START, 'hex'));
+                break;
+            case 'rfid-read-tag':
+                currentRfidMode = 'read-tag';
+                sendRfidCommand(Buffer.from(Constants.HEX_SCAN_START, 'hex'));
+                break;
+            case 'rfid-stop':
+                sendRfidCommand(Buffer.from(Constants.HEX_SCAN_STOP, 'hex'));
+                break;
+            case 'upload_inventory':
+                parseInventoryData(data.payload);
+                const newInitialInventory = Array.from(inventoryData.values()).map(item => ({ ...item, count: 0, timestamp: null }));
+                broadcast({ type: 'rfid-initial-inventory', payload: newInitialInventory });
+                break;
+        }
     }
 }
 
 
 // --- RFID Logic ---
+function startRfidInitialization() {
+    console.log('Starting RFID reader initialization...');
+    sendRfidCommand(Buffer.from(Constants.HEX_START_APP, 'hex'), 'Attempting to start App firmware...');
+    rfidAutoModeState = 1; // State: start_app sent
+
+    setTimeout(() => {
+        if (rfidAutoModeState === 1) { 
+            console.log('RFID reader did not confirm app start, checking running stage...');
+            sendRfidCommand(Buffer.from(Constants.HEX_GET_RUNNING_STAGE, 'hex'), 'Requesting current running stage');
+        }
+    }, 2000);
+}
+
 function handleRfidData(data) {
     rfidPacketBuffer = Buffer.concat([rfidPacketBuffer, data]);
     while (rfidPacketBuffer.length >= 5) {
@@ -187,9 +212,28 @@ function handleRfidData(data) {
 function parseRfidResponse(buffer) {
     const commandCode = buffer[2];
     const statusCode = buffer.readUInt16BE(3);
+    const payload = buffer.slice(5, 5 + buffer[1]);
+
+    if (commandCode === Constants.CMD_START_APP) {
+        rfidAutoModeState = 2;
+        console.log('RFID Reader is in application mode and ready.');
+        return;
+    }
+    
+    if (commandCode === Constants.CMD_GET_RUNNING_STAGE) {
+        const runningStage = payload[0];
+        if (runningStage === Constants.STAGE_APP) {
+            rfidAutoModeState = 2;
+            console.log('RFID Reader is in application mode and ready.');
+        } else if (runningStage === Constants.STAGE_BOOTLOADER) {
+            console.log('RFID Reader is in bootloader mode. Sending command to switch to app mode...');
+            rfidAutoModeState = 0;
+            sendRfidCommand(Buffer.from(Constants.HEX_START_APP, 'hex'), 'Switching to App Mode');
+        }
+        return;
+    }
 
     if (isScanningRFID && (commandCode === Constants.CMD_RFID_INVENTORY || commandCode === Constants.CMD_MULTI_TAG_INVENTORY) && statusCode === Constants.STATUS_SUCCESS) {
-        const payload = buffer.slice(5, 5 + buffer[1]);
         const epcData = payload.slice(5, payload.length - 2);
         const epcHex = epcData.toString('hex').toUpperCase();
 
@@ -227,7 +271,8 @@ function broadcastRfidUpdates() {
 }
 
 
-function sendRfidCommand(data) {
+function sendRfidCommand(data, logMessage = '') {
+    if (logMessage) console.log(logMessage);
     const crcCalculator = new CRC();
     const calculatedCrc = crcCalculator.calculate(data.slice(1));
     const crcBuffer = Buffer.alloc(2);
@@ -290,7 +335,7 @@ function registerOrUpdateBook(book) {
     const bookIndex = books.findIndex(line => line.startsWith(book.uid));
     const bookLine = `${book.uid}\t${book.title}\t${book.author}\t${book.publisher}\tAvailable\t${new Date().toISOString()}`;
 
-    if (bookIndex > 0) {
+    if (bookIndex > -1 && books[bookIndex]) {
         books[bookIndex] = bookLine;
     } else {
         books.push(bookLine);
@@ -303,7 +348,7 @@ function updateBookStatus(uid, status) {
     let books = fs.readFileSync(booksDbPath, 'utf-8').split('\n').filter(line => line.trim() !== '');
     const bookIndex = books.findIndex(line => line.startsWith(uid));
 
-    if (bookIndex > 0) {
+    if (bookIndex > -1 && books[bookIndex]) {
         let bookData = books[bookIndex].split('\t');
         bookData[4] = status;
         bookData[5] = new Date().toISOString();
@@ -373,3 +418,4 @@ app.get('/download-inventory', (req, res) => {
         res.status(404).send("Inventory file not found.");
     }
 });
+
