@@ -12,22 +12,22 @@
         <div class="section">
             <h2>NFC Library Management</h2>
             <div class="controls">
-                <input type="text" id="title" placeholder="Book Title">
+                <input type="text" id="title" placeholder="Item Title">
                 <input type="text" id="author" placeholder="Author">
                 <input type="text" id="publisher" placeholder="Publisher">
-                <button id="register-btn">Register Book</button>
+                <button id="register-btn">Register Item</button>
             </div>
             <div class="controls">
                 <button id="check-in-btn">Check-In</button>
                 <button id="check-out-btn">Check-Out</button>
-                <button id="download-btn">Download Book List</button>
+                <button id="download-btn">Download NFC Item List</button>
             </div>
             <div class="status-panel">
                 <h3>Last Scanned NFC Tag</h3>
                 <p id="scanned-tag">None</p>
             </div>
             <div class="table-container">
-                <h3>Book List</h3>
+                <h3>Item List</h3>
                 <table id="book-list-table">
                     <thead>
                         <tr>
@@ -53,10 +53,17 @@
             </div>
             <div class="controls">
                 <button id="rfid-start-btn">Start RFID Scan</button>
+                <button id="rfid-read-tag-btn">Scan RFID Tag</button>
                 <button id="rfid-stop-btn">Stop RFID Scan</button>
             </div>
              <div class="inventory-controls">
+                 <input type="file" id="import-file" accept=".csv" style="display: none;">
+                 <button id="import-btn">Import Inventory</button>
                  <button id="export-btn">Export Inventory</button>
+            </div>
+            <div class="read-tag-container">
+                <h3>Last Scanned EPC</h3>
+                <p id="last-scanned-epc">N/A</p>
             </div>
             <div class="table-container">
                 <h3>Inventory Summary</h3>

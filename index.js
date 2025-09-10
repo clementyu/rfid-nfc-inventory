@@ -72,8 +72,10 @@ const Constants = {
 };
 let rfidPacketBuffer = Buffer.alloc(0);
 let isScanningRFID = false;
+let currentRfidMode = 'inventory'; // 'inventory' or 'read-tag'
 const scannedTagsCumulative = new Map();
 const inventoryData = new Map();
+
 
 // --- NFC Constants and State ---
 const booksDbPath = path.join(__dirname, 'work', 'books.tsv');
@@ -107,7 +109,7 @@ nfcReader.on('ready', () => {
     console.log('NFC Reader is ready.');
     nfcReader.on('tag', (tag) => {
         const book = findBookByUid(tag.uid);
-        const title = book ? book.title : 'Unregistered Book';
+        const title = book ? book.title : 'Unregistered Item';
         const status = book ? book.status : 'N/A';
         broadcast({ type: 'nfc-tag', uid: tag.uid, title, status });
     });
@@ -145,10 +147,20 @@ function handleWsMessage(data) {
             break;
         // RFID Commands
         case 'rfid-start':
+            currentRfidMode = 'inventory';
+            sendRfidCommand(Buffer.from(Constants.HEX_SCAN_START, 'hex'));
+            break;
+        case 'rfid-read-tag':
+            currentRfidMode = 'read-tag';
             sendRfidCommand(Buffer.from(Constants.HEX_SCAN_START, 'hex'));
             break;
         case 'rfid-stop':
             sendRfidCommand(Buffer.from(Constants.HEX_SCAN_STOP, 'hex'));
+            break;
+        case 'upload_inventory':
+            parseInventoryData(data.payload);
+            const newInitialInventory = Array.from(inventoryData.values()).map(item => ({ ...item, count: 0, timestamp: null }));
+            broadcast({ type: 'rfid-initial-inventory', payload: newInitialInventory });
             break;
     }
 }
@@ -181,8 +193,13 @@ function parseRfidResponse(buffer) {
         const epcData = payload.slice(5, payload.length - 2);
         const epcHex = epcData.toString('hex').toUpperCase();
 
+        if (currentRfidMode === 'read-tag') {
+            broadcast({ type: 'rfid-single-tag', epc: epcHex });
+            return;
+        }
+
         if (argv.inventory && !inventoryData.has(epcHex)) {
-            return; // Skip if not in inventory
+            return;
         }
 
         const cumulativeEntry = scannedTagsCumulative.get(epcHex) || { count: 0, timestamp: '' };
@@ -228,26 +245,31 @@ function sendRfidCommand(data) {
 function loadInventory(filePath) {
     try {
         const data = fs.readFileSync(filePath, 'utf8');
-        const lines = data.split('\n').filter(line => line.trim() !== '');
-        const headers = lines[0].split(',');
-        const epcIndex = headers.indexOf('EPC');
-        const itemIndex = headers.indexOf('item');
-        const idIndex = headers.indexOf('id');
-        const expirationDateIndex = headers.indexOf('expiration_date');
-
-
-        for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(',');
-            const epc = values[epcIndex].trim();
-            const item = values[itemIndex].trim();
-            const id = parseInt(values[idIndex], 10);
-            const expiration_date = values[expirationDateIndex].trim();
-            if (epc) {
-                inventoryData.set(epc, { id, epc, item, expiration_date});
-            }
-        }
+        parseInventoryData(data);
     } catch (err) {
         console.error('Failed to read inventory file:', err);
+    }
+}
+
+function parseInventoryData(csvData) {
+    inventoryData.clear();
+    const lines = csvData.split('\n').filter(line => line.trim() !== '');
+    if (lines.length === 0) return;
+    const headers = lines[0].split(',');
+    const epcIndex = headers.indexOf('EPC');
+    const itemIndex = headers.indexOf('item');
+    const idIndex = headers.indexOf('id');
+    const expirationDateIndex = headers.indexOf('expiration_date');
+
+    for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',');
+        const epc = values[epcIndex].trim();
+        const item = values[itemIndex].trim();
+        const id = parseInt(values[idIndex], 10);
+        const expiration_date = values[expirationDateIndex] ? values[expirationDateIndex].trim() : null;
+        if (epc) {
+            inventoryData.set(epc, { id, epc, item, expiration_date });
+        }
     }
 }
 

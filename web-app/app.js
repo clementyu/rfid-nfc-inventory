@@ -18,8 +18,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const connectionStatus = document.getElementById('connection-status');
     const scanningStatus = document.getElementById('scanning-status');
     const rfidStartBtn = document.getElementById('rfid-start-btn');
+    const rfidReadTagBtn = document.getElementById('rfid-read-tag-btn');
     const rfidStopBtn = document.getElementById('rfid-stop-btn');
+    const importBtn = document.getElementById('import-btn');
+    const importFileInput = document.getElementById('import-file');
     const exportBtn = document.getElementById('export-btn');
+    const lastScannedEpc = document.getElementById('last-scanned-epc');
+    const readTagContainer = document.querySelector('.read-tag-container');
     const itemSummaryTableBody = document.getElementById('item-summary-table-body');
     const epcTableBody = document.getElementById('epc-table-body');
     let inventoryData = [];
@@ -46,6 +51,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case 'rfid-update':
                 handleRfidUpdate(message.payload);
+                break;
+            case 'rfid-single-tag':
+                lastScannedEpc.textContent = message.epc;
+                readTagContainer.classList.add('visible');
                 break;
         }
     };
@@ -89,14 +98,39 @@ document.addEventListener('DOMContentLoaded', () => {
         scanningStatus.textContent = 'Scanning';
         scanningStatus.classList.remove('idle');
         scanningStatus.classList.add('scanning');
+        readTagContainer.classList.remove('visible');
         ws.send(JSON.stringify({ command: 'rfid-start' }));
     });
+    rfidReadTagBtn.addEventListener('click', () => {
+        scanningStatus.textContent = 'Scanning';
+        scanningStatus.classList.remove('idle');
+        scanningStatus.classList.add('scanning');
+        lastScannedEpc.textContent = 'Scanning...';
+        readTagContainer.classList.add('visible');
+        ws.send(JSON.stringify({ command: 'rfid-read-tag' }));
+    });
+
     rfidStopBtn.addEventListener('click', () => {
         scanningStatus.textContent = 'Idle';
         scanningStatus.classList.remove('scanning');
         scanningStatus.classList.add('idle');
         ws.send(JSON.stringify({ command: 'rfid-stop' }));
     });
+    importBtn.addEventListener('click', () => {
+        importFileInput.click();
+    });
+    importFileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            ws.send(JSON.stringify({ command: 'upload_inventory', payload: e.target.result }));
+        };
+        reader.readAsText(file);
+        event.target.value = null;
+    });
+
     exportBtn.addEventListener('click', () => {
         window.location.href = '/download-inventory';
     });
