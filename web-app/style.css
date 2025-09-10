@@ -23,29 +23,48 @@ h1, h2, h3 {
     text-align: center;
 }
 
+.global-status {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
 .section {
-    margin-bottom: 3rem;
-    padding: 2rem;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
     border: 1px solid #dee2e6;
     border-radius: 8px;
 }
 
-.controls, .inventory-controls {
+.controls {
     margin-bottom: 1.5rem;
     display: flex;
     justify-content: center;
     gap: 1rem;
     flex-wrap: wrap;
+    align-items: center;
 }
 
-.controls input {
+.registration-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+.registration-grid button {
+    grid-column: 1 / -1; /* Make button span all columns */
+}
+
+
+.controls input[type="text"] {
     padding: 0.75rem;
     font-size: 1rem;
     border: 1px solid #ccc;
     border-radius: 8px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
-.controls button, .inventory-controls button {
+.controls button, .inventory-controls button, .list-controls button, .pagination-controls button {
     padding: 0.75rem 1.5rem;
     font-size: 1rem;
     font-weight: 600;
@@ -53,15 +72,39 @@ h1, h2, h3 {
     border-radius: 8px;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    background-color: #007bff;
+    color: white;
 }
 
-.status-panel {
-    margin-bottom: 2rem;
-    background-color: #f8f9fa;
-    padding: 1rem;
+.controls button:hover, .inventory-controls button:hover, .list-controls button:hover, .pagination-controls button:hover {
+     background-color: #0056b3;
+}
+
+.list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.list-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.list-controls select {
+    padding: 0.75rem;
     border-radius: 8px;
-    line-height: 1.5;
-    text-align: center;
+    border: 1px solid #ccc;
+}
+
+
+.status-panel {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
 }
 
 .status-indicator {
@@ -73,13 +116,12 @@ h1, h2, h3 {
 }
 .status-indicator.connected { background-color: #28a745; }
 .status-indicator.disconnected { background-color: #dc3545; }
-.status-indicator.scanning { background-color: #007bff; }
+.status-indicator.scanning { background-color: #ffc107; color: #333;}
 .status-indicator.idle { background-color: #6c757d; }
 
 
 .table-container {
     overflow-x: auto;
-    margin-top: 2rem;
 }
 
 table {
@@ -96,24 +138,19 @@ th, td {
     padding: 1rem;
     text-align: left;
     border-bottom: 1px solid #dee2e6;
+    white-space: nowrap;
 }
 
-.read-tag-container {
-    display: none; /* Hide by default */
+.pagination-controls {
     margin-top: 1.5rem;
-    padding: 1rem;
-    background-color: #e9ecef;
-    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
 }
 
-.read-tag-container.visible {
-    display: block; /* Show when .visible class is added */
-}
-
-#last-scanned-epc {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: #007bff;
-    word-break: break-all;
+.pagination-controls button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
 }
 

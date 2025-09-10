@@ -1,35 +1,42 @@
 document.addEventListener('DOMContentLoaded', () => {
     const ws = new WebSocket(`ws://${window.location.host}`);
 
-    // NFC Elements
-    const titleInput = document.getElementById('title');
-    const authorInput = document.getElementById('author');
-    const publisherInput = document.getElementById('publisher');
-    const registerBtn = document.getElementById('register-btn');
-    const checkInBtn = document.getElementById('check-in-btn');
-    const checkOutBtn = document.getElementById('check-out-btn');
-    const downloadBtn = document.getElementById('download-btn');
-    const scannedTagP = document.getElementById('scanned-tag');
-    const bookListBody = document.getElementById('book-list-body');
-    let lastScannedUid = null;
-    let currentBookListData = '';
+    // --- Global State ---
+    let itemList = [];
+    let currentPage = 1;
+    let rowsPerPage = 10;
+    let uidScanned = false;
+    let epcScanned = false;
 
-    // RFID Elements
+
+    // --- UI Elements ---
     const connectionStatus = document.getElementById('connection-status');
     const scanningStatus = document.getElementById('scanning-status');
-    const rfidStartBtn = document.getElementById('rfid-start-btn');
-    const rfidReadTagBtn = document.getElementById('rfid-read-tag-btn');
-    const rfidStopBtn = document.getElementById('rfid-stop-btn');
+
+    // Registration
+    const regIdInput = document.getElementById('reg-id');
+    const regEpcInput = document.getElementById('reg-epc');
+    const regUidInput = document.getElementById('reg-uid');
+    const regItemInput = document.getElementById('reg-item');
+    const regDescInput = document.getElementById('reg-desc');
+    const registerBtn = document.getElementById('register-btn');
+    const readRfidTagBtn = document.getElementById('read-rfid-tag-btn');
+    const stopBtn = document.getElementById('rfid-stop-btn');
+
+    // Item List
+    const itemListBody = document.getElementById('item-list-body');
     const importBtn = document.getElementById('import-btn');
     const importFileInput = document.getElementById('import-file');
     const exportBtn = document.getElementById('export-btn');
-    const lastScannedEpc = document.getElementById('last-scanned-epc');
-    const readTagContainer = document.querySelector('.read-tag-container');
-    const itemSummaryTableBody = document.getElementById('item-summary-table-body');
-    const epcTableBody = document.getElementById('epc-table-body');
-    let inventoryData = [];
-    let isReadTagActive = false;
 
+    // Pagination
+    const rowsPerPageSelect = document.getElementById('rows-per-page');
+    const prevPageBtn = document.getElementById('prev-page-btn');
+    const nextPageBtn = document.getElementById('next-page-btn');
+    const pageInfo = document.getElementById('page-info');
+
+
+    // --- WebSocket Handlers ---
     ws.onopen = () => {
         connectionStatus.textContent = 'Connected';
         connectionStatus.classList.remove('disconnected');
@@ -39,178 +46,128 @@ document.addEventListener('DOMContentLoaded', () => {
     ws.onmessage = event => {
         const message = JSON.parse(event.data);
         switch (message.type) {
-            case 'nfc-tag':
-                handleNfcTag(message);
+            case 'item-list-update':
+                itemList = message.payload;
+                renderItemList();
                 break;
-            case 'nfc-book-list':
-                currentBookListData = message.data;
-                displayBookList(currentBookListData);
-                break;
-            case 'rfid-initial-inventory':
-                inventoryData = message.payload.map(item => ({...item, count: 0, timestamp: null}));
-                renderRfidTables();
-                break;
-            case 'rfid-update':
-                isReadTagActive = false;
-                readTagContainer.classList.remove('visible');
-                handleRfidUpdate(message.payload);
-                break;
-            case 'rfid-single-tag':
-                if (isReadTagActive) {
-                    lastScannedEpc.textContent = message.epc;
-                    readTagContainer.classList.add('visible');
+            case 'nfc-tag-scanned':
+                if (!uidScanned) {
+                    regUidInput.value = message.uid;
+                    uidScanned = true;
                 }
+                break;
+            case 'rfid-tag-scanned':
+                 if (!epcScanned) {
+                    regEpcInput.value = message.epc;
+                    epcScanned = true;
+                }
+                break;
+            case 'rfid-error':
+                alert(message.message);
                 break;
         }
     };
     
     ws.onclose = () => {
         connectionStatus.textContent = 'Disconnected';
-        connectionStatus.classList.remove('connected');
         connectionStatus.classList.add('disconnected');
+        connectionStatus.classList.add('connected');
     };
 
-    // NFC Event Listeners
+    // --- Event Listeners ---
     registerBtn.addEventListener('click', () => {
-        const book = {
-            uid: lastScannedUid,
-            title: titleInput.value,
-            author: authorInput.value,
-            publisher: publisherInput.value,
+        const item = {
+            ID: regIdInput.value,
+            EPC: regEpcInput.value,
+            UID: regUidInput.value,
+            Item: regItemInput.value,
+            description: regDescInput.value,
         };
-        if (book.uid && book.title) {
-            ws.send(JSON.stringify({ command: 'register', payload: book }));
+        if (item.ID && item.Item) {
+            ws.send(JSON.stringify({ command: 'register-item', payload: item }));
+            // Clear fields after registration
+            [regIdInput, regEpcInput, regUidInput, regItemInput, regDescInput].forEach(input => input.value = '');
+            uidScanned = false;
+            epcScanned = false;
+
+        } else {
+            alert('Item ID and Item Name are required.');
         }
     });
-    checkInBtn.addEventListener('click', () => {
-        if (lastScannedUid) ws.send(JSON.stringify({ command: 'check-in', uid: lastScannedUid }));
-    });
-    checkOutBtn.addEventListener('click', () => {
-        if (lastScannedUid) ws.send(JSON.stringify({ command: 'check-out', uid: lastScannedUid }));
-    });
-    downloadBtn.addEventListener('click', () => {
-         const blob = new Blob([currentBookListData], { type: 'text/tab-separated-values' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'books.tsv';
-        a.click();
-        URL.revokeObjectURL(url);
-    });
 
-    // RFID Event Listeners
-    rfidStartBtn.addEventListener('click', () => {
-        isReadTagActive = false;
+    readRfidTagBtn.addEventListener('click', () => {
+        epcScanned = false; // Allow new EPC to be populated
         scanningStatus.textContent = 'Scanning';
         scanningStatus.classList.remove('idle');
         scanningStatus.classList.add('scanning');
-        readTagContainer.classList.remove('visible');
-        ws.send(JSON.stringify({ command: 'rfid-start' }));
+        ws.send(JSON.stringify({ command: 'read-rfid-tag' }));
     });
-    rfidReadTagBtn.addEventListener('click', () => {
-        isReadTagActive = true;
-        scanningStatus.textContent = 'Scanning';
-        scanningStatus.classList.remove('idle');
-        scanningStatus.classList.add('scanning');
-        lastScannedEpc.textContent = 'Scanning...';
-        readTagContainer.classList.add('visible');
-        ws.send(JSON.stringify({ command: 'rfid-read-tag' }));
-    });
-
-    rfidStopBtn.addEventListener('click', () => {
-        isReadTagActive = false;
+    
+    stopBtn.addEventListener('click', () => {
         scanningStatus.textContent = 'Idle';
         scanningStatus.classList.remove('scanning');
         scanningStatus.classList.add('idle');
         ws.send(JSON.stringify({ command: 'rfid-stop' }));
     });
-    importBtn.addEventListener('click', () => {
-        importFileInput.click();
-    });
+
+    importBtn.addEventListener('click', () => importFileInput.click());
     importFileInput.addEventListener('change', (event) => {
         const file = event.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
-        reader.onload = (e) => {
-            ws.send(JSON.stringify({ command: 'upload_inventory', payload: e.target.result }));
-        };
+        reader.onload = (e) => ws.send(JSON.stringify({ command: 'upload-item-list', payload: e.target.result }));
         reader.readAsText(file);
         event.target.value = null;
     });
 
-    exportBtn.addEventListener('click', () => {
-        window.location.href = '/download-inventory';
+    exportBtn.addEventListener('click', () => window.location.href = '/download-inventory');
+
+    rowsPerPageSelect.addEventListener('change', (e) => {
+        rowsPerPage = parseInt(e.target.value, 10);
+        currentPage = 1;
+        renderItemList();
     });
 
+    prevPageBtn.addEventListener('click', () => {
+        if (currentPage > 1) {
+            currentPage--;
+            renderItemList();
+        }
+    });
 
-    // NFC Functions
-    function handleNfcTag(message) {
-        lastScannedUid = message.uid;
-        scannedTagP.innerHTML = `<strong>Title:</strong> ${message.title} <br> <strong>UID:</strong> ${lastScannedUid} <br> <strong>Status:</strong> ${message.status}`;
-    }
+    nextPageBtn.addEventListener('click', () => {
+        const totalPages = Math.ceil(itemList.length / rowsPerPage);
+        if (currentPage < totalPages) {
+            currentPage++;
+            renderItemList();
+        }
+    });
 
-    function displayBookList(data) {
-        bookListBody.innerHTML = '';
-        const rows = data.trim().split('\n').slice(1);
-        rows.forEach(row => {
-            const columns = row.split('\t');
-            const tr = document.createElement('tr');
-            columns.forEach(col => {
-                const td = document.createElement('td');
-                td.textContent = col;
-                tr.appendChild(td);
-            });
-            bookListBody.appendChild(tr);
-        });
-    }
+    // --- Rendering Functions ---
+    function renderItemList() {
+        itemListBody.innerHTML = '';
+        const totalPages = Math.ceil(itemList.length / rowsPerPage) || 1;
+        pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
 
-    // RFID Functions
-    function handleRfidUpdate(updates) {
-        updates.forEach(update => {
-            const existingItem = inventoryData.find(item => item.epc === update.epc);
-            if (existingItem) {
-                existingItem.count = update.count;
-                existingItem.timestamp = update.timestamp;
-            } else {
-                inventoryData.push(update);
-            }
-        });
-        renderRfidTables();
-    }
+        const start = (currentPage - 1) * rowsPerPage;
+        const end = start + rowsPerPage;
+        const paginatedItems = itemList.slice(start, end);
 
-    function renderRfidTables() {
-        const itemSummary = new Map();
-        inventoryData.forEach(item => {
-             if (item.count > 0) {
-                const currentItemSummary = itemSummary.get(item.item) || { count: 0, lastScanned: null };
-                currentItemSummary.count++;
-                if (!currentItemSummary.lastScanned || item.timestamp > currentItemSummary.lastScanned) {
-                    currentItemSummary.lastScanned = item.timestamp;
-                }
-                itemSummary.set(item.item, currentItemSummary);
-             }
-        });
-
-        itemSummaryTableBody.innerHTML = '';
-        itemSummary.forEach((data, item) => {
-            const row = itemSummaryTableBody.insertRow();
-            row.insertCell().textContent = data.count;
-            row.insertCell().textContent = item;
-            row.insertCell().textContent = data.lastScanned ? new Date(data.lastScanned).toLocaleTimeString() : 'N/A';
-        });
-
-        epcTableBody.innerHTML = '';
-        inventoryData.forEach(item => {
-            const row = epcTableBody.insertRow();
+        paginatedItems.forEach(item => {
+            const row = itemListBody.insertRow();
             row.innerHTML = `
-                <td>${item.id}</td>
-                <td>${item.epc}</td>
-                <td>${item.item}</td>
-                <td>${item.count || 0}</td>
-                <td>${item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : 'N/A'}</td>
+                <td>${item.ID || ''}</td>
+                <td>${item.EPC || ''}</td>
+                <td>${item.UID || ''}</td>
+                <td>${item.rfidLastScanned || 'N/A'}</td>
+                <td>${item.nfcLastScanned || 'N/A'}</td>
+                <td>${item.Item || ''}</td>
+                <td>${item.description || ''}</td>
             `;
         });
+        
+        prevPageBtn.disabled = currentPage === 1;
+        nextPageBtn.disabled = currentPage === totalPages;
     }
 });
 

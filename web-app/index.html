@@ -9,91 +9,64 @@
     <div class="container">
         <h1>Combined RFID/NFC Management System</h1>
 
-        <!-- NFC Section -->
+        <div class="status-panel global-status">
+            <span id="connection-status" class="status-indicator disconnected">Disconnected</span>
+            <span id="scanning-status" class="status-indicator idle">Idle</span>
+        </div>
+
+        <!-- Registration Section -->
         <div class="section">
-            <h2>NFC Library Management</h2>
-            <div class="controls">
-                <input type="text" id="title" placeholder="Item Title">
-                <input type="text" id="author" placeholder="Author">
-                <input type="text" id="publisher" placeholder="Publisher">
-                <button id="register-btn">Register Item</button>
+            <h2>Register Items</h2>
+            <div class="controls registration-grid">
+                <input type="text" id="reg-id" placeholder="Item ID">
+                <input type="text" id="reg-epc" placeholder="Container EPC (RFID)">
+                <input type="text" id="reg-uid" placeholder="Item UID (NFC)">
+                <input type="text" id="reg-item" placeholder="Item Name">
+                <input type="text" id="reg-desc" placeholder="Description">
+                <button id="register-btn">Register/Update Item</button>
             </div>
             <div class="controls">
-                <button id="check-in-btn">Check-In</button>
-                <button id="check-out-btn">Check-Out</button>
-                <button id="download-btn">Download NFC Item List</button>
-            </div>
-            <div class="status-panel">
-                <h3>Last Scanned NFC Tag</h3>
-                <p id="scanned-tag">None</p>
-            </div>
-            <div class="table-container">
-                <h3>Item List</h3>
-                <table id="book-list-table">
-                    <thead>
-                        <tr>
-                            <th>UID</th>
-                            <th>Title</th>
-                            <th>Author</th>
-                            <th>Publisher</th>
-                            <th>Status</th>
-                            <th>Last Updated</th>
-                        </tr>
-                    </thead>
-                    <tbody id="book-list-body">
-                    </tbody>
-                </table>
+                <button id="read-rfid-tag-btn">Read RFID Tag</button>
+                <button id="rfid-stop-btn">Stop Scanning</button>
             </div>
         </div>
 
-        <!-- RFID Section -->
+        <!-- Item List Section -->
         <div class="section">
-            <h2>RFID Inventory</h2>
-            <div class="status-panel">
-                 <span id="connection-status" class="status-indicator disconnected">Disconnected</span>
-                 <span id="scanning-status" class="status-indicator idle">Idle</span>
-            </div>
-            <div class="controls">
-                <button id="rfid-start-btn">Start Scanning</button>
-                <button id="rfid-read-tag-btn">Read Tag</button>
-                <button id="rfid-stop-btn">Stop Scanning</button>
-            </div>
-             <div class="inventory-controls">
-                 <input type="file" id="import-file" accept=".csv" style="display: none;">
-                 <button id="import-btn">Import Inventory</button>
-                 <button id="export-btn">Export Inventory</button>
-            </div>
-            <div class="read-tag-container">
-                <h3>Last Scanned EPC</h3>
-                <p id="last-scanned-epc">N/A</p>
+            <div class="list-header">
+                <h2>Item List</h2>
+                <div class="list-controls">
+                    <button id="import-btn">Import Inventory</button>
+                    <input type="file" id="import-file" accept=".csv" style="display: none;">
+                    <button id="export-btn">Export Inventory</button>
+                    <select id="rows-per-page">
+                        <option value="10">10 rows</option>
+                        <option value="30">30 rows</option>
+                        <option value="50">50 rows</option>
+                        <option value="100">100 rows</option>
+                    </select>
+                </div>
             </div>
             <div class="table-container">
-                <h3>Inventory Summary</h3>
-                <table id="item-summary-table">
-                    <thead>
-                        <tr>
-                            <th>Quantity</th>
-                            <th>Item</th>
-                            <th>Last scanned</th>
-                        </tr>
-                    </thead>
-                    <tbody id="item-summary-table-body"></tbody>
-                </table>
-            </div>
-            <div class="table-container">
-                <h3>All Scanned EPCs</h3>
-                <table id="epc-table">
+                <table id="item-list-table">
                     <thead>
                         <tr>
                             <th>ID</th>
                             <th>EPC</th>
+                            <th>UID</th>
+                            <th>RFID Last Scanned</th>
+                            <th>NFC Last Scanned</th>
                             <th>Item</th>
-                            <th>Scanned Times</th>
-                            <th>Last Scanned</th>
+                            <th>Description</th>
                         </tr>
                     </thead>
-                    <tbody id="epc-table-body"></tbody>
+                    <tbody id="item-list-body"></tbody>
                 </table>
+            </div>
+            <div class="pagination-controls">
+                <button id="prev-page-btn">Previous</button>
+                <span id="page-info">Page 1 of 1</span>
+                <button id="next-page-btn">Next</button>
             </div>
         </div>
     </div>
