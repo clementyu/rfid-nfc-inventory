@@ -1,0 +1,17 @@
+{
+  "name": "combined-rfid-nfc-system",
+  "version": "1.0.0",
+  "description": "A combined system for RFID inventory and NFC library management.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "pn532": "^1.0.0",
+    "serialport": "^10.4.0",
+    "ws": "^8.12.0",
+    "yargs": "^18.0.0",
+    "dotenv": "^16.0.3"
+  }
+}
