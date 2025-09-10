@@ -5,8 +5,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let itemList = [];
     let currentPage = 1;
     let rowsPerPage = 10;
-    let uidScanned = false;
-    let epcScanned = false;
+    let isUidScanned = false;
+    let isEpcScanned = false;
+    let selectedItemId = null;
 
 
     // --- UI Elements ---
@@ -19,9 +20,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const regUidInput = document.getElementById('reg-uid');
     const regItemInput = document.getElementById('reg-item');
     const regDescInput = document.getElementById('reg-desc');
+    const regStatusInput = document.getElementById('reg-status');
     const registerBtn = document.getElementById('register-btn');
     const readRfidTagBtn = document.getElementById('read-rfid-tag-btn');
     const stopBtn = document.getElementById('rfid-stop-btn');
+    const forSaleBtn = document.getElementById('for-sale-btn');
+    const soldBtn = document.getElementById('sold-btn');
+    const lastScannedEpcInfo = document.getElementById('last-scanned-epc-info');
+    const lastScannedUidInfo = document.getElementById('last-scanned-uid-info');
+
 
     // Item List
     const itemListBody = document.getElementById('item-list-body');
@@ -34,7 +41,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const prevPageBtn = document.getElementById('prev-page-btn');
     const nextPageBtn = document.getElementById('next-page-btn');
     const pageInfo = document.getElementById('page-info');
-
 
     // --- WebSocket Handlers ---
     ws.onopen = () => {
@@ -51,27 +57,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderItemList();
                 break;
             case 'nfc-tag-scanned':
-                if (!uidScanned) {
+                if (!isUidScanned) {
                     regUidInput.value = message.uid;
-                    uidScanned = true;
+                    isUidScanned = true;
                 }
+                lastScannedUidInfo.textContent = `Last Scanned UID: ${message.uid} at ${new Date(message.timestamp).toLocaleTimeString()}`;
+                break;
+            case 'nfc-item-match':
+                populateFormWithItem(message.payload);
+                lastScannedUidInfo.textContent = `Last Scanned UID: ${message.payload.UID} at ${new Date().toLocaleTimeString()}`;
                 break;
             case 'rfid-tag-scanned':
-                 if (!epcScanned) {
+                if (!isEpcScanned) {
                     regEpcInput.value = message.epc;
-                    epcScanned = true;
+                    isEpcScanned = true;
                 }
+                lastScannedEpcInfo.textContent = `Last Scanned EPC: ${message.epc} at ${new Date(message.timestamp).toLocaleTimeString()}`;
                 break;
             case 'rfid-error':
                 alert(message.message);
+                scanningStatus.textContent = 'Error';
                 break;
         }
     };
     
     ws.onclose = () => {
         connectionStatus.textContent = 'Disconnected';
+        connectionStatus.classList.remove('connected');
         connectionStatus.classList.add('disconnected');
-        connectionStatus.classList.add('connected');
     };
 
     // --- Event Listeners ---
@@ -82,21 +95,20 @@ document.addEventListener('DOMContentLoaded', () => {
             UID: regUidInput.value,
             Item: regItemInput.value,
             description: regDescInput.value,
+            status: regStatusInput.value,
+            isEpcScanned,
+            isUidScanned,
         };
         if (item.ID && item.Item) {
             ws.send(JSON.stringify({ command: 'register-item', payload: item }));
-            // Clear fields after registration
-            [regIdInput, regEpcInput, regUidInput, regItemInput, regDescInput].forEach(input => input.value = '');
-            uidScanned = false;
-            epcScanned = false;
-
+            clearRegistrationForm();
         } else {
             alert('Item ID and Item Name are required.');
         }
     });
 
     readRfidTagBtn.addEventListener('click', () => {
-        epcScanned = false; // Allow new EPC to be populated
+        isEpcScanned = false;
         scanningStatus.textContent = 'Scanning';
         scanningStatus.classList.remove('idle');
         scanningStatus.classList.add('scanning');
@@ -108,6 +120,14 @@ document.addEventListener('DOMContentLoaded', () => {
         scanningStatus.classList.remove('scanning');
         scanningStatus.classList.add('idle');
         ws.send(JSON.stringify({ command: 'rfid-stop' }));
+    });
+
+    forSaleBtn.addEventListener('click', () => {
+        updateStatus('for sale');
+    });
+
+    soldBtn.addEventListener('click', () => {
+        updateStatus('sold');
     });
 
     importBtn.addEventListener('click', () => importFileInput.click());
@@ -143,7 +163,41 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Rendering Functions ---
+    // --- Rendering and Helper Functions ---
+    function updateStatus(newStatus) {
+        const itemId = regIdInput.value;
+        if (itemId) {
+            ws.send(JSON.stringify({
+                command: 'set-status',
+                payload: { itemId: itemId, newStatus: newStatus }
+            }));
+            regStatusInput.value = newStatus;
+        } else {
+            alert('Please select an item from the list first.');
+        }
+    }
+
+
+    function populateFormWithItem(item) {
+        selectedItemId = item.ID;
+        regIdInput.value = item.ID || '';
+        regEpcInput.value = item.EPC || '';
+        regUidInput.value = item.UID || '';
+        regItemInput.value = item.Item || '';
+        regDescInput.value = item.description || '';
+        regStatusInput.value = item.status || '';
+        isUidScanned = false; // Reset scan flags
+        isEpcScanned = false;
+    }
+    
+    function clearRegistrationForm() {
+        selectedItemId = null;
+        [regIdInput, regEpcInput, regUidInput, regItemInput, regDescInput, regStatusInput].forEach(input => input.value = '');
+        isUidScanned = false;
+        isEpcScanned = false;
+    }
+
+
     function renderItemList() {
         itemListBody.innerHTML = '';
         const totalPages = Math.ceil(itemList.length / rowsPerPage) || 1;
@@ -159,11 +213,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${item.ID || ''}</td>
                 <td>${item.EPC || ''}</td>
                 <td>${item.UID || ''}</td>
-                <td>${item.rfidLastScanned || 'N/A'}</td>
-                <td>${item.nfcLastScanned || 'N/A'}</td>
+                <td>${item.rfidLastScanned ? new Date(item.rfidLastScanned).toLocaleString() : 'N/A'}</td>
+                <td>${item.nfcLastScanned ? new Date(item.nfcLastScanned).toLocaleString() : 'N/A'}</td>
                 <td>${item.Item || ''}</td>
                 <td>${item.description || ''}</td>
+                <td>${item.status || ''}</td>
             `;
+            row.addEventListener('click', () => populateFormWithItem(item));
         });
         
         prevPageBtn.disabled = currentPage === 1;

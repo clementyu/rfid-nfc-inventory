@@ -26,7 +26,7 @@ const wss = new WebSocketServer({ server });
 
 // --- Unified Item List Setup ---
 const itemListPath = path.join(__dirname, 'work', 'itemList.csv');
-const ITEM_LIST_HEADER = 'ID,EPC,UID,RFID Last Scanned,NFC Last Scanned,Item,description\n';
+const ITEM_LIST_HEADER = 'ID,EPC,UID,RFID Last Scanned,NFC Last Scanned,Item,description,status\n';
 let itemList = []; // In-memory store for the item list
 
 // --- RFID Constants and State ---
@@ -56,15 +56,15 @@ function loadItemList() {
     const csvData = fs.readFileSync(itemListPath, 'utf8');
     const lines = csvData.trim().split('\n').slice(1);
     itemList = lines.map(line => {
-        const [ID, EPC, UID, rfidLastScanned, nfcLastScanned, Item, description] = line.split(',');
-        return { ID, EPC, UID, rfidLastScanned, nfcLastScanned, Item, description };
+        const [ID, EPC, UID, rfidLastScanned, nfcLastScanned, Item, description, status] = line.split(',');
+        return { ID, EPC, UID, rfidLastScanned, nfcLastScanned, Item, description, status };
     });
 }
 
 function saveItemList() {
     const csvData = [
-        'ID,EPC,UID,RFID Last Scanned,NFC Last Scanned,Item,description',
-        ...itemList.map(item => `${item.ID},${item.EPC},${item.UID},${item.rfidLastScanned},${item.nfcLastScanned},${item.Item},${item.description}`)
+        'ID,EPC,UID,RFID Last Scanned,NFC Last Scanned,Item,description,status',
+        ...itemList.map(item => `${item.ID || ''},${item.EPC || ''},${item.UID || ''},${item.rfidLastScanned || ''},${item.nfcLastScanned || ''},${item.Item || ''},${item.description || ''},${item.status || ''}`)
     ].join('\n');
     fs.writeFileSync(itemListPath, csvData);
 }
@@ -85,18 +85,16 @@ nfcReader.on('ready', () => {
     console.log('NFC Reader is ready.');
     nfcReader.on('tag', (tag) => {
         const timestamp = new Date().toISOString();
-        let itemFound = false;
-        itemList.forEach(item => {
-            if (item.UID === tag.uid) {
-                item.nfcLastScanned = timestamp;
-                itemFound = true;
-            }
-        });
-        if (itemFound) {
+        const foundItem = itemList.find(item => item.UID === tag.uid);
+
+        if (foundItem) {
+            foundItem.nfcLastScanned = timestamp;
             saveItemList();
             broadcast({ type: 'item-list-update', payload: itemList });
+            broadcast({ type: 'nfc-item-match', payload: foundItem });
+        } else {
+             broadcast({ type: 'nfc-tag-scanned', uid: tag.uid, timestamp });
         }
-        broadcast({ type: 'nfc-tag-scanned', uid: tag.uid });
     });
 });
 nfcPort.on('error', (err) => console.error(`NFC Port Error: ${err.message}`));
@@ -125,15 +123,33 @@ function handleWsMessage(data, ws) {
 
     switch (data.command) {
         case 'register-item':
-            const existingIndex = itemList.findIndex(item => item.ID === data.payload.ID);
-            const newItem = { ...data.payload, rfidLastScanned: '', nfcLastScanned: '' };
+            const { ID, EPC, UID, Item, description, status } = data.payload;
+            const existingIndex = itemList.findIndex(item => item.ID === ID);
+            const timestamp = new Date().toISOString();
+
+            const newItemData = {
+                ID, EPC, UID, Item, description,
+                status: (existingIndex === -1) ? 'registered' : status,
+                rfidLastScanned: data.payload.isEpcScanned ? timestamp : (existingIndex > -1 ? itemList[existingIndex].rfidLastScanned : ''),
+                nfcLastScanned: data.payload.isUidScanned ? timestamp : (existingIndex > -1 ? itemList[existingIndex].nfcLastScanned : '')
+            };
+
             if (existingIndex > -1) {
-                itemList[existingIndex] = { ...itemList[existingIndex], ...data.payload };
+                itemList[existingIndex] = { ...itemList[existingIndex], ...newItemData };
             } else {
-                itemList.push(newItem);
+                itemList.push(newItemData);
             }
             saveItemList();
             broadcast({ type: 'item-list-update', payload: itemList });
+            break;
+        case 'set-status':
+            const { itemId, newStatus } = data.payload;
+            const itemToUpdate = itemList.find(item => item.ID === itemId);
+            if (itemToUpdate) {
+                itemToUpdate.status = newStatus;
+                saveItemList();
+                broadcast({ type: 'item-list-update', payload: itemList });
+            }
             break;
         case 'rfid-start':
             currentRfidMode = 'inventory';
@@ -149,8 +165,8 @@ function handleWsMessage(data, ws) {
         case 'upload-item-list':
             const lines = data.payload.trim().split('\n').slice(1);
             itemList = lines.map(line => {
-                const [ID, EPC, UID, rfidLastScanned, nfcLastScanned, Item, description] = line.split(',');
-                return { ID, EPC, UID, rfidLastScanned, nfcLastScanned, Item, description };
+                const [ID, EPC, UID, rfidLastScanned, nfcLastScanned, Item, description, status] = line.split(',');
+                return { ID, EPC, UID, rfidLastScanned, nfcLastScanned, Item, description, status };
             });
             saveItemList();
             broadcast({ type: 'item-list-update', payload: itemList });
@@ -202,10 +218,10 @@ function parseRfidResponse(buffer) {
     if (isScanningRFID && (commandCode === Constants.CMD_RFID_INVENTORY || commandCode === Constants.CMD_MULTI_TAG_INVENTORY)) {
         const epcData = payload.slice(5, payload.length - 2);
         const epcHex = epcData.toString('hex').toUpperCase();
+        const timestamp = new Date().toISOString();
         if (currentRfidMode === 'read-rfid-tag') {
-            broadcast({ type: 'rfid-tag-scanned', epc: epcHex });
+            broadcast({ type: 'rfid-tag-scanned', epc: epcHex, timestamp });
         } else {
-            const timestamp = new Date().toISOString();
             let updated = false;
             itemList.forEach(item => {
                 if (item.EPC === epcHex) {

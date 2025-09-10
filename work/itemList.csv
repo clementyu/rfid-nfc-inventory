@@ -1,6 +1,1 @@
-ID,EPC,UID,RFID Last Scanned,NFC Last Scanned,Item,description
-1,E28069150000501F7AB92DBB,04:71:85:3c:c6:2a:81,,,test1,tttest111
-2,5E00000010691EF45CFDE778,,,,q,qq
-3,,,,,11,22
-4,,,,,1111,2222
-5,,,,,123123,123213123
+ID,EPC,UID,RFID Last Scanned,NFC Last Scanned,Item,description,status

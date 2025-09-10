@@ -80,6 +80,37 @@ h1, h2, h3 {
      background-color: #0056b3;
 }
 
+/* --- New Button Styles --- */
+#read-rfid-tag-btn {
+    background-color: #17a2b8; /* Teal */
+}
+#read-rfid-tag-btn:hover {
+    background-color: #138496;
+}
+
+#rfid-stop-btn {
+    background-color: #6c757d; /* Grey */
+}
+#rfid-stop-btn:hover {
+    background-color: #5a6268;
+}
+
+#for-sale-btn {
+    background-color: #28a745; /* Green */
+}
+#for-sale-btn:hover {
+    background-color: #218838;
+}
+
+#sold-btn {
+    background-color: #dc3545; /* Red */
+}
+#sold-btn:hover {
+    background-color: #c82333;
+}
+/* --- End New Button Styles --- */
+
+
 .list-header {
     display: flex;
     justify-content: space-between;
@@ -105,6 +136,20 @@ h1, h2, h3 {
     display: flex;
     justify-content: center;
     gap: 1rem;
+}
+
+.scan-info-panel {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #495057;
+}
+
+.scan-info-panel p {
+    margin: 0.5rem 0;
 }
 
 .status-indicator {
@@ -139,6 +184,11 @@ th, td {
     text-align: left;
     border-bottom: 1px solid #dee2e6;
     white-space: nowrap;
+}
+
+tbody tr:hover {
+    background-color: #e9ecef;
+    cursor: pointer;
 }
 
 .pagination-controls {

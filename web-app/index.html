@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Combined RFID/NFC System</title>
+    <title>RFID / NFC Inventory Management System</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Combined RFID/NFC Management System</h1>
+        <h1>RFID / NFC Inventory Management System</h1>
 
         <div class="status-panel global-status">
             <span id="connection-status" class="status-indicator disconnected">Disconnected</span>
@@ -23,11 +23,18 @@
                 <input type="text" id="reg-uid" placeholder="Item UID (NFC)">
                 <input type="text" id="reg-item" placeholder="Item Name">
                 <input type="text" id="reg-desc" placeholder="Description">
+                <input type="text" id="reg-status" placeholder="Status">
                 <button id="register-btn">Register/Update Item</button>
             </div>
             <div class="controls">
                 <button id="read-rfid-tag-btn">Read RFID Tag</button>
                 <button id="rfid-stop-btn">Stop Scanning</button>
+                <button id="for-sale-btn">For Sale</button>
+                <button id="sold-btn">Sold</button>
+            </div>
+             <div class="scan-info-panel">
+                <p id="last-scanned-epc-info">Last Scanned EPC: None</p>
+                <p id="last-scanned-uid-info">Last Scanned UID: None</p>
             </div>
         </div>
 
@@ -58,6 +65,7 @@
                             <th>NFC Last Scanned</th>
                             <th>Item</th>
                             <th>Description</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody id="item-list-body"></tbody>
