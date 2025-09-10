@@ -1,7 +1,3 @@
-Of course, here is the `README.md` file for the combined project, including the requested "Software Setup" section.
-
------
-
 # **Combined RFID/NFC Management System**
 
 This project integrates two distinct functionalities into a single, web-based application: an RFID inventory tracking system and an NFC-based library management system. The unified interface allows for seamless management of both RFID-tagged items and NFC-tagged books.
@@ -76,13 +72,13 @@ This project integrates two distinct functionalities into a single, web-based ap
 First, clone the code with the following command:
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/clementyu/rfid-nfc-inventory.git
 ```
 
 After cloning, navigate to the project directory:
 
 ```bash
-cd combined-system
+cd rfid-nfc-inventory
 ```
 
 Next, install **nvm (Node Version Manager)** to manage your Node.js versions.
@@ -114,4 +110,4 @@ To start the application, run the `index.js` file with Node.js, specifying the c
 node index.js --rfid-port /dev/ttyS0 --nfc-port /dev/ttyUSB0 --inventory=./work/inventory.csv
 ```
 
-The web interface will be available at **http://\<your-pi-hostname\>:8080**.
+The web interface will be available at `http://rfid-nfc-inventory.local:8080` .
