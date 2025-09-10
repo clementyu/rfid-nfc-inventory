@@ -97,3 +97,15 @@ th, td {
     text-align: left;
     border-bottom: 1px solid #dee2e6;
 }
+
+.read-tag-container {
+    display: none; /* Hide by default */
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background-color: #e9ecef;
+    border-radius: 8px;
+}
+
+.read-tag-container.visible {
+    display: block; /* Show when .visible class is added */
+}

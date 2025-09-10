@@ -50,6 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderRfidTables();
                 break;
             case 'rfid-update':
+                readTagContainer.classList.remove('visible');
                 handleRfidUpdate(message.payload);
                 break;
             case 'rfid-single-tag':
