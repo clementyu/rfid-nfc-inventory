@@ -14,11 +14,40 @@ This project integrates two distinct functionalities into a single, web-based ap
 * **Live Tag Scanning**: See the most recently scanned RFID and NFC tag IDs directly on the page to assist with registration.
 
 ## **Hardware Requirements**
+Before you begin, ensure you have the following hardware:
 
-* Raspberry Pi 4  
-* An RFID reader module (e.g., model SLR1100) and UHF RFID tags  
-* PN532 NFC Reader Module and NFC Tags (e.g., NTAG215)  
-* USB to Serial (UART) adapter for the NFC reader
+  * An RFID reader module (e.g., model SLR1100 with antenna)
+![](rfid-inventory-hardware-list.jpeg)
+  * UHF RFID tags for your items
+![](rfid-inventory-rfid-tags.jpeg)
+  * Raspberry Pi 4
+  * microSD card (32GB)
+  * PN532 NFC Reader Module and NFC Tags (e.g., NTAG215)  
+
+### **Hardware Setup**
+
+* Wire the J10 connector to the Raspberry Pi 4 and plugin the DC adaptor as below: 
+
+![](rfid-inventory-hardware.jpeg)
+  
+* The pinout of `J10` near by the upper right coner is illustrated as below. 
+![](rfid-inventory-reader-lite-pcb-pinout.png)
+
+**J10 Pinout from `left` to `right` :**
+  * `p1`: GND
+  * `p2`: SLR1100 `UART Rx` (will connect to Raspberry Pi `GPIO14 TXD0`)
+  * `p3`: SLR1100 `UART Tx` (will connect to Raspberry Pi `GPIO15 RXD0`)
+  * `04`: not in use. 
+
+* [Optional] Here is the pinout of the connector for the 10-pin ribbon cable. This is for those who is confident on building a customized ribbon cable which has DC 12V, UART port, and the other GPIO control.
+![](rfid-inventory-reader-lite-pinout-3d.png)
+
+
+* Connect `PN532 NFC Reader` to the USB port of the Raspberry Pi 4 USB port. 
+Thus, all of the components are connected as below:  
+
+![](rfid-nfc-inventory-hardware.jpeg)
+
 
 ## **Software Setup**
 
@@ -89,6 +118,12 @@ To start the application, run the index.js file, specifying the correct serial p
 node index.js --rfid-port /dev/ttyUSB0 --nfc-port /dev/ttyUSB1
 ```
 
+If you are using an RFID Reader Kit from https://github.com/clementyu/rfid-inventory , the `--rfid-port` will be  `/dev/ttyS0` so the command will be
+
+```bash
+node index.js --rfid-port /dev/ttyS0 --nfc-port /dev/ttyUSB0
+```
+
 The web interface will be available at `http://rfid-nfc-inventory.local:8080` .
 
 ## **Using the Web Interface**
@@ -126,11 +161,6 @@ This section displays your entire inventory in a searchable and paginated table.
 * **Import/Export:**  
   * Click **Import Inventory** to upload a new itemList.csv file. This will overwrite the current list.  
   * Click **Export Inventory** to download the current item list as a itemList.csv file.
-
-
-
-
-
 
 # **RFID / NFC Inventory Management System**
 
@@ -208,38 +238,3 @@ node index.js \--rfid-port /dev/ttyS0 \--nfc-port /dev/ttyUSB0
 
 The web interface will be available at **http://rfid-nfc-inventory.local:8080**.
 
-## **Using the Web Interface**
-
-Once the server is running, you can access the web interface. The interface is divided into two main sections:
-
-### **Register Items**
-
-This panel is for adding new items to your inventory or editing existing ones.
-
-* **Registering a New Item:**  
-  1. Fill in the Item ID, Item Name, Description, and other fields.  
-  2. To associate an RFID or NFC tag, you can either:  
-     * Click **Read RFID Tag**. The next RFID tag scanned will populate the Container EPC (RFID) field.  
-     * Scan an NFC tag with the NFC reader. The Item UID (NFC) field will be populated.  
-     * Manually type in the EPC or UID.  
-  3. Click **Register/Update Item**. The new item will be saved with a status of registered.  
-* **Editing an Existing Item:**  
-  1. In the Item List below, simply click on the row of the item you wish to edit.  
-  2. The item's details will automatically load into the Register Items form.  
-  3. Make your changes and click **Register/Update Item** to save.  
-* **Updating Status:**  
-  1. First, load an item into the form by clicking it in the list.  
-  2. Click **For Sale** to change its status to "for sale".  
-  3. Click **Sold** to change its status to "sold".  
-* **Live Scan Display:**  
-  * The panel below the buttons will show the most recently scanned EPC and UID, along with a timestamp, helping you associate the correct tags with your items.
-
-### **Item List**
-
-This section displays your entire inventory in a searchable and paginated table.
-
-* **Viewing Items:** The table shows all details for each item. Click any row to load it for editing.  
-* **Pagination:** Use the dropdown to select how many rows to display per page (10, 30, 50, or 100\) and navigate through pages using the "Previous" and "Next" buttons.  
-* **Import/Export:**  
-  * Click **Import Inventory** to upload a new itemList.csv file. This will overwrite the current list.  
-  * Click **Export Inventory** to download the current item list as a itemList.csv file.
