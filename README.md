@@ -79,10 +79,10 @@ npm install
 
 ## **Running the Application**
 
-To start the application, run the index.js file, specifying the correct serial ports for your RFID and NFC readers. You can find the port names by running ls /dev/tty\* on your Raspberry Pi. The RFID reader will likely be /dev/ttyS0, and the USB-connected NFC reader will be /dev/ttyUSB0 or similar.
+To start the application, run the index.js file, specifying the correct serial ports for your RFID and NFC readers. You can find the port names by running ls /dev/tty\* on your Raspberry Pi. The RFID reader will likely be /dev/ttyUSB1, and the USB-connected NFC reader will be /dev/ttyUSB0 or similar.
 
 ```bash
-node index.js --rfid-port /dev/ttyS0 --nfc-port /dev/ttyUSB0
+node index.js --rfid-port /dev/ttyUSB0 --nfc-port /dev/ttyUSB1
 ```
 
 The web interface will be available at `http://rfid-nfc-inventory.local:8080` .

@@ -219,8 +219,14 @@ function parseRfidResponse(buffer) {
         const epcData = payload.slice(5, payload.length - 2);
         const epcHex = epcData.toString('hex').toUpperCase();
         const timestamp = new Date().toISOString();
+
         if (currentRfidMode === 'read-rfid-tag') {
-            broadcast({ type: 'rfid-tag-scanned', epc: epcHex, timestamp });
+            const foundItem = itemList.find(item => item.EPC === epcHex);
+            if (foundItem) {
+                broadcast({ type: 'rfid-item-match', payload: foundItem });
+            } else {
+                broadcast({ type: 'rfid-tag-scanned', epc: epcHex, timestamp });
+            }
         } else {
             let updated = false;
             itemList.forEach(item => {

@@ -80,7 +80,7 @@ h1, h2, h3 {
      background-color: #0056b3;
 }
 
-/* --- New Button Styles --- */
+/* --- Specific Button Styles --- */
 #read-rfid-tag-btn {
     background-color: #17a2b8; /* Teal */
 }
@@ -108,7 +108,13 @@ h1, h2, h3 {
 #sold-btn:hover {
     background-color: #c82333;
 }
-/* --- End New Button Styles --- */
+#import-btn, #export-btn {
+    background-color: #ffc107; /* Yellow */
+    color: #333;
+}
+#import-btn:hover, #export-btn:hover {
+    background-color: #e0a800;
+}
 
 
 .list-header {
@@ -202,5 +208,15 @@ tbody tr:hover {
 .pagination-controls button:disabled {
     background-color: #ccc;
     cursor: not-allowed;
+}
+
+/* Styles for highlighting scanned items */
+tr.highlighted {
+    background-color: #fff3cd !important;
+}
+
+td.highlight-text {
+    color: #dc3545 !important;
+    font-weight: bold !important;
 }
 

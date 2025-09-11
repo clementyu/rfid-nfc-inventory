@@ -74,6 +74,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 lastScannedEpcInfo.textContent = `Last Scanned EPC: ${message.epc} at ${new Date(message.timestamp).toLocaleTimeString()}`;
                 break;
+            case 'rfid-item-match':
+                handleRfidItemMatch(message.payload);
+                break;
             case 'rfid-error':
                 alert(message.message);
                 scanningStatus.textContent = 'Error';
@@ -164,6 +167,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Rendering and Helper Functions ---
+    function handleRfidItemMatch(itemData) {
+        lastScannedEpcInfo.textContent = `Last Scanned EPC: ${itemData.EPC} at ${new Date().toLocaleTimeString()}`;
+        const itemIndex = itemList.findIndex(item => item.ID === itemData.ID);
+        if (itemIndex > -1) {
+            const [matchedItem] = itemList.splice(itemIndex, 1);
+            matchedItem.isHighlighted = true;
+            itemList.unshift(matchedItem);
+            currentPage = 1;
+            renderItemList();
+        }
+    }
+
+
     function updateStatus(newStatus) {
         const itemId = regIdInput.value;
         if (itemId) {
@@ -209,9 +225,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         paginatedItems.forEach(item => {
             const row = itemListBody.insertRow();
+            if (item.isHighlighted) {
+                row.classList.add('highlighted');
+            }
             row.innerHTML = `
-                <td>${item.ID || ''}</td>
-                <td>${item.EPC || ''}</td>
+                <td class="${item.isHighlighted ? 'highlight-text' : ''}">${item.ID || ''}</td>
+                <td class="${item.isHighlighted ? 'highlight-text' : ''}">${item.EPC || ''}</td>
                 <td>${item.UID || ''}</td>
                 <td>${item.rfidLastScanned ? new Date(item.rfidLastScanned).toLocaleString() : 'N/A'}</td>
                 <td>${item.nfcLastScanned ? new Date(item.nfcLastScanned).toLocaleString() : 'N/A'}</td>
@@ -222,6 +241,9 @@ document.addEventListener('DOMContentLoaded', () => {
             row.addEventListener('click', () => populateFormWithItem(item));
         });
         
+        // Cleanup highlight flag after rendering
+        itemList.forEach(item => delete item.isHighlighted);
+
         prevPageBtn.disabled = currentPage === 1;
         nextPageBtn.disabled = currentPage === totalPages;
     }
