@@ -116,6 +116,12 @@ h1, h2, h3 {
     background-color: #e0a800;
 }
 
+#clear-btn {
+    background-color: #fd7e14; /* Orange */
+}
+#clear-btn:hover {
+    background-color: #e87312;
+}
 
 .list-header {
     display: flex;

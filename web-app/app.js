@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const stopBtn = document.getElementById('rfid-stop-btn');
     const forSaleBtn = document.getElementById('for-sale-btn');
     const soldBtn = document.getElementById('sold-btn');
+    const clearBtn = document.getElementById('clear-btn');
     const lastScannedEpcInfo = document.getElementById('last-scanned-epc-info');
     const lastScannedUidInfo = document.getElementById('last-scanned-uid-info');
 
@@ -57,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderItemList();
                 break;
             case 'nfc-tag-scanned':
-                if (!isUidScanned) {
+                if (!regUidInput.value) { // Only auto-fill if the field is empty
                     regUidInput.value = message.uid;
                     isUidScanned = true;
                 }
@@ -68,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 lastScannedUidInfo.textContent = `Last Scanned UID: ${message.payload.UID} at ${new Date().toLocaleTimeString()}`;
                 break;
             case 'rfid-tag-scanned':
-                if (!isEpcScanned) {
+                 if (!regEpcInput.value) { // Only auto-fill if the field is empty
                     regEpcInput.value = message.epc;
                     isEpcScanned = true;
                 }
@@ -132,6 +133,8 @@ document.addEventListener('DOMContentLoaded', () => {
     soldBtn.addEventListener('click', () => {
         updateStatus('sold');
     });
+
+    clearBtn.addEventListener('click', clearRegistrationForm);
 
     importBtn.addEventListener('click', () => importFileInput.click());
     importFileInput.addEventListener('change', (event) => {
