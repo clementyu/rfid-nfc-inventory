@@ -8,13 +8,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let isUidScanned = false;
     let isEpcScanned = false;
     let selectedItemId = null;
+    let sortConfig = { key: 'ID', direction: 'ascending' };
 
 
     // --- UI Elements ---
     const connectionStatus = document.getElementById('connection-status');
     const scanningStatus = document.getElementById('scanning-status');
-
-    // Registration
     const regIdInput = document.getElementById('reg-id');
     const regEpcInput = document.getElementById('reg-epc');
     const regUidInput = document.getElementById('reg-uid');
@@ -29,15 +28,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearBtn = document.getElementById('clear-btn');
     const lastScannedEpcInfo = document.getElementById('last-scanned-epc-info');
     const lastScannedUidInfo = document.getElementById('last-scanned-uid-info');
-
-
-    // Item List
     const itemListBody = document.getElementById('item-list-body');
     const importBtn = document.getElementById('import-btn');
     const importFileInput = document.getElementById('import-file');
     const exportBtn = document.getElementById('export-btn');
-
-    // Pagination
     const rowsPerPageSelect = document.getElementById('rows-per-page');
     const prevPageBtn = document.getElementById('prev-page-btn');
     const nextPageBtn = document.getElementById('next-page-btn');
@@ -55,10 +49,11 @@ document.addEventListener('DOMContentLoaded', () => {
         switch (message.type) {
             case 'item-list-update':
                 itemList = message.payload;
+                sortItems();
                 renderItemList();
                 break;
             case 'nfc-tag-scanned':
-                if (!regUidInput.value) { // Only auto-fill if the field is empty
+                if (!regUidInput.value) {
                     regUidInput.value = message.uid;
                     isUidScanned = true;
                 }
@@ -66,10 +61,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case 'nfc-item-match':
                 populateFormWithItem(message.payload);
-                lastScannedUidInfo.textContent = `Last Scanned UID: ${message.payload.UID} at ${new Date().toLocaleTimeString()}`;
+                handleNfcItemMatch(message.payload);
                 break;
             case 'rfid-tag-scanned':
-                 if (!regEpcInput.value) { // Only auto-fill if the field is empty
+                 if (!regEpcInput.value) {
                     regEpcInput.value = message.epc;
                     isEpcScanned = true;
                 }
@@ -87,21 +82,15 @@ document.addEventListener('DOMContentLoaded', () => {
     
     ws.onclose = () => {
         connectionStatus.textContent = 'Disconnected';
-        connectionStatus.classList.remove('connected');
+        connectionStatus.classList.add('connected');
         connectionStatus.classList.add('disconnected');
     };
 
     // --- Event Listeners ---
     registerBtn.addEventListener('click', () => {
         const item = {
-            ID: regIdInput.value,
-            EPC: regEpcInput.value,
-            UID: regUidInput.value,
-            Item: regItemInput.value,
-            description: regDescInput.value,
-            status: regStatusInput.value,
-            isEpcScanned,
-            isUidScanned,
+            ID: regIdInput.value, EPC: regEpcInput.value, UID: regUidInput.value, Item: regItemInput.value,
+            description: regDescInput.value, status: regStatusInput.value, isEpcScanned, isUidScanned,
         };
         if (item.ID && item.Item) {
             ws.send(JSON.stringify({ command: 'register-item', payload: item }));
@@ -126,16 +115,9 @@ document.addEventListener('DOMContentLoaded', () => {
         ws.send(JSON.stringify({ command: 'rfid-stop' }));
     });
 
-    forSaleBtn.addEventListener('click', () => {
-        updateStatus('for sale');
-    });
-
-    soldBtn.addEventListener('click', () => {
-        updateStatus('sold');
-    });
-
+    forSaleBtn.addEventListener('click', () => updateStatus('for sale'));
+    soldBtn.addEventListener('click', () => updateStatus('sold'));
     clearBtn.addEventListener('click', clearRegistrationForm);
-
     importBtn.addEventListener('click', () => importFileInput.click());
     importFileInput.addEventListener('change', (event) => {
         const file = event.target.files[0];
@@ -169,53 +151,91 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Rendering and Helper Functions ---
+    // --- Main Functions ---
     function handleRfidItemMatch(itemData) {
         lastScannedEpcInfo.textContent = `Last Scanned EPC: ${itemData.EPC} at ${new Date().toLocaleTimeString()}`;
-        const itemIndex = itemList.findIndex(item => item.ID === itemData.ID);
+        highlightItemInList(itemData.ID, 'rfid');
+    }
+    
+    function handleNfcItemMatch(itemData) {
+        lastScannedUidInfo.textContent = `Last Scanned UID: ${itemData.UID} at ${new Date().toLocaleTimeString()}`;
+        highlightItemInList(itemData.ID, 'nfc');
+    }
+    
+    function highlightItemInList(itemId, type) {
+        const itemIndex = itemList.findIndex(item => item.ID === itemId);
         if (itemIndex > -1) {
             const [matchedItem] = itemList.splice(itemIndex, 1);
-            matchedItem.isHighlighted = true;
+            matchedItem.isHighlighted = type; // 'rfid' or 'nfc'
             itemList.unshift(matchedItem);
             currentPage = 1;
             renderItemList();
         }
     }
 
-
     function updateStatus(newStatus) {
         const itemId = regIdInput.value;
         if (itemId) {
-            ws.send(JSON.stringify({
-                command: 'set-status',
-                payload: { itemId: itemId, newStatus: newStatus }
-            }));
+            ws.send(JSON.stringify({ command: 'set-status', payload: { itemId, newStatus } }));
             regStatusInput.value = newStatus;
         } else {
             alert('Please select an item from the list first.');
         }
     }
 
-
     function populateFormWithItem(item) {
-        selectedItemId = item.ID;
         regIdInput.value = item.ID || '';
         regEpcInput.value = item.EPC || '';
         regUidInput.value = item.UID || '';
         regItemInput.value = item.Item || '';
         regDescInput.value = item.description || '';
         regStatusInput.value = item.status || '';
-        isUidScanned = false; // Reset scan flags
+        isUidScanned = false;
         isEpcScanned = false;
     }
     
     function clearRegistrationForm() {
-        selectedItemId = null;
         [regIdInput, regEpcInput, regUidInput, regItemInput, regDescInput, regStatusInput].forEach(input => input.value = '');
         isUidScanned = false;
         isEpcScanned = false;
     }
-
+    
+    function setupSorting() {
+        document.querySelectorAll('#item-list-table thead th[data-column]').forEach(headerCell => {
+            headerCell.addEventListener('click', () => {
+                const key = headerCell.dataset.column;
+                if (sortConfig.key === key) {
+                    sortConfig.direction = sortConfig.direction === 'ascending' ? 'descending' : 'ascending';
+                } else {
+                    sortConfig.key = key;
+                    sortConfig.direction = 'ascending';
+                }
+                sortItems();
+                renderItemList();
+            });
+        });
+    }
+    
+    function sortItems() {
+        itemList.sort((a, b) => {
+            if (a[sortConfig.key] < b[sortConfig.key]) {
+                return sortConfig.direction === 'ascending' ? -1 : 1;
+            }
+            if (a[sortConfig.key] > b[sortConfig.key]) {
+                return sortConfig.direction === 'ascending' ? 1 : -1;
+            }
+            return 0;
+        });
+    }
+    
+    function updateSortArrows() {
+        document.querySelectorAll('#item-list-table thead th[data-column]').forEach(headerCell => {
+            headerCell.classList.remove('sort-asc', 'sort-desc');
+            if (headerCell.dataset.column === sortConfig.key) {
+                headerCell.classList.add(sortConfig.direction === 'ascending' ? 'sort-asc' : 'sort-desc');
+            }
+        });
+    }
 
     function renderItemList() {
         itemListBody.innerHTML = '';
@@ -229,12 +249,12 @@ document.addEventListener('DOMContentLoaded', () => {
         paginatedItems.forEach(item => {
             const row = itemListBody.insertRow();
             if (item.isHighlighted) {
-                row.classList.add('highlighted');
+                row.classList.add(item.isHighlighted === 'rfid' ? 'highlighted-rfid' : 'highlighted-nfc');
             }
             row.innerHTML = `
-                <td class="${item.isHighlighted ? 'highlight-text' : ''}">${item.ID || ''}</td>
-                <td class="${item.isHighlighted ? 'highlight-text' : ''}">${item.EPC || ''}</td>
-                <td>${item.UID || ''}</td>
+                <td class="${item.isHighlighted === 'rfid' ? 'highlight-text-rfid' : ''}">${item.ID || ''}</td>
+                <td class="${item.isHighlighted === 'rfid' ? 'highlight-text-rfid' : ''}">${item.EPC || ''}</td>
+                <td class="${item.isHighlighted === 'nfc' ? 'highlight-text-nfc' : ''}">${item.UID || ''}</td>
                 <td>${item.rfidLastScanned ? new Date(item.rfidLastScanned).toLocaleString() : 'N/A'}</td>
                 <td>${item.nfcLastScanned ? new Date(item.nfcLastScanned).toLocaleString() : 'N/A'}</td>
                 <td>${item.Item || ''}</td>
@@ -244,11 +264,13 @@ document.addEventListener('DOMContentLoaded', () => {
             row.addEventListener('click', () => populateFormWithItem(item));
         });
         
-        // Cleanup highlight flag after rendering
         itemList.forEach(item => delete item.isHighlighted);
-
         prevPageBtn.disabled = currentPage === 1;
         nextPageBtn.disabled = currentPage === totalPages;
+        updateSortArrows();
     }
+    
+    // --- Initial Setup ---
+    setupSorting();
 });
 

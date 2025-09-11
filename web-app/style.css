@@ -81,47 +81,18 @@ h1, h2, h3 {
 }
 
 /* --- Specific Button Styles --- */
-#read-rfid-tag-btn {
-    background-color: #17a2b8; /* Teal */
-}
-#read-rfid-tag-btn:hover {
-    background-color: #138496;
-}
-
-#rfid-stop-btn {
-    background-color: #6c757d; /* Grey */
-}
-#rfid-stop-btn:hover {
-    background-color: #5a6268;
-}
-
-#for-sale-btn {
-    background-color: #28a745; /* Green */
-}
-#for-sale-btn:hover {
-    background-color: #218838;
-}
-
-#sold-btn {
-    background-color: #dc3545; /* Red */
-}
-#sold-btn:hover {
-    background-color: #c82333;
-}
-#import-btn, #export-btn {
-    background-color: #ffc107; /* Yellow */
-    color: #333;
-}
-#import-btn:hover, #export-btn:hover {
-    background-color: #e0a800;
-}
-
-#clear-btn {
-    background-color: #fd7e14; /* Orange */
-}
-#clear-btn:hover {
-    background-color: #e87312;
-}
+#read-rfid-tag-btn { background-color: #17a2b8; }
+#read-rfid-tag-btn:hover { background-color: #138496; }
+#rfid-stop-btn { background-color: #6c757d; }
+#rfid-stop-btn:hover { background-color: #5a6268; }
+#for-sale-btn { background-color: #28a745; }
+#for-sale-btn:hover { background-color: #218838; }
+#sold-btn { background-color: #dc3545; }
+#sold-btn:hover { background-color: #c82333; }
+#import-btn, #export-btn { background-color: #ffc107; color: #333; }
+#import-btn:hover, #export-btn:hover { background-color: #e0a800; }
+#clear-btn { background-color: #fd7e14; }
+#clear-btn:hover { background-color: #e87312; }
 
 .list-header {
     display: flex;
@@ -131,98 +102,50 @@ h1, h2, h3 {
     margin-bottom: 1rem;
 }
 
-.list-controls {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-}
-
-.list-controls select {
-    padding: 0.75rem;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-}
-
-
-.status-panel {
-    display: flex;
-    justify-content: center;
-    gap: 1rem;
-}
+.list-controls { display: flex; gap: 1rem; align-items: center; }
+.list-controls select { padding: 0.75rem; border-radius: 8px; border: 1px solid #ccc; }
+.status-panel { display: flex; justify-content: center; gap: 1rem; }
 
 .scan-info-panel {
-    margin-top: 1rem;
-    padding: 1rem;
-    background-color: #f8f9fa;
-    border-radius: 8px;
-    text-align: center;
-    font-size: 0.9rem;
-    color: #495057;
+    margin-top: 1rem; padding: 1rem; background-color: #f8f9fa;
+    border-radius: 8px; text-align: center; font-size: 0.9rem; color: #495057;
 }
-
-.scan-info-panel p {
-    margin: 0.5rem 0;
-}
-
+.scan-info-panel p { margin: 0.5rem 0; }
 .status-indicator {
-    display: inline-block;
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    font-weight: 600;
-    color: #fff;
+    display: inline-block; padding: 0.5rem 1rem; border-radius: 20px;
+    font-weight: 600; color: #fff;
 }
 .status-indicator.connected { background-color: #28a745; }
 .status-indicator.disconnected { background-color: #dc3545; }
 .status-indicator.scanning { background-color: #ffc107; color: #333;}
 .status-indicator.idle { background-color: #6c757d; }
 
+.table-container { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+thead { background-color: #f8f9fa; color: #495057; }
+th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6; white-space: nowrap; }
+tbody tr:hover { background-color: #e9ecef; cursor: pointer; }
 
-.table-container {
-    overflow-x: auto;
+/* --- Sorting Arrows --- */
+th[data-column] { cursor: pointer; position: relative; user-select: none; }
+th[data-column]::after {
+    content: ''; display: inline-block; width: 1em; height: 1em;
+    position: absolute; right: 5px; top: 50%;
+    transform: translateY(-50%); opacity: 0.4;
 }
+th[data-column].sort-asc::after { content: '▲'; opacity: 1; }
+th[data-column].sort-desc::after { content: '▼'; opacity: 1; }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-thead {
-    background-color: #f8f9fa;
-    color: #495057;
-}
-
-th, td {
-    padding: 1rem;
-    text-align: left;
-    border-bottom: 1px solid #dee2e6;
-    white-space: nowrap;
-}
-
-tbody tr:hover {
-    background-color: #e9ecef;
-    cursor: pointer;
-}
 
 .pagination-controls {
-    margin-top: 1.5rem;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 1rem;
+    margin-top: 1.5rem; display: flex; justify-content: center;
+    align-items: center; gap: 1rem;
 }
+.pagination-controls button:disabled { background-color: #ccc; cursor: not-allowed; }
 
-.pagination-controls button:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
-}
-
-/* Styles for highlighting scanned items */
-tr.highlighted {
-    background-color: #fff3cd !important;
-}
-
-td.highlight-text {
-    color: #dc3545 !important;
-    font-weight: bold !important;
-}
+/* --- Highlighting Styles --- */
+tr.highlighted-rfid { background-color: #fff3cd !important; }
+td.highlight-text-rfid { color: #dc3545 !important; font-weight: bold !important; }
+tr.highlighted-nfc { background-color: #d1ecf1 !important; }
+td.highlight-text-nfc { color: #0c5460 !important; font-weight: bold !important; }
 
